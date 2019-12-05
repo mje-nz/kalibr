@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-from pyx import canvas, path, color, deco, style
+from pyx import canvas, path, color, deco, style, text
 import argparse
 import sys
 import textwrap
@@ -1201,7 +1201,7 @@ def generate_crop_marks(canvas, left, right, top, bottom, offset=0.3, length=1):
 
 def generate_aprilgrid(
         canvas, n_cols, n_rows, size, spacing=0.25, family="t36h11", skip_tags=None,
-        crop_marks=False
+        use_color=True, crop_marks=False
 ):
     """Draw an Aprilgrid target on the given canvas.
 
@@ -1241,45 +1241,44 @@ def generate_aprilgrid(
             generate_apriltag(canvas, pos, size_cm, spacing, i, codes, rotation=2)
             # c.text(pos[0]+0.45*tagSize, pos[1]-0.7*tagSize*tagSpacing, "{0}".format(id))
 
-    # Draw axis
+    # Draw axes
     pos = (-1.5 * spacing * size_cm, -1.5 * spacing * size_cm)
-    c.stroke(
-        path.line(pos[0], pos[1], pos[0] + size_cm * 0.3, pos[1]),
-        [
-            color.rgb.red,
-            deco.earrow(
-                [
-                    deco.stroked([color.rgb.red, style.linejoin.round]),
-                    deco.filled([color.rgb.red]),
-                ],
-                size=size_cm * 0.10,
-            ),
-        ],
-    )
-    c.text(pos[0] + size_cm * 0.3, pos[1], "x")
+    arrow_len = size_cm * 0.3
+    x_color = color.rgb.red if use_color else color.rgb.black
+    y_color = color.rgb.green if use_color else color.rgb.black
+
+    def arrow(arrow_color):
+        return deco.earrow(
+            [
+                deco.stroked([arrow_color, style.linejoin.round]),
+                deco.filled([arrow_color]),
+            ],
+            size=size_cm * 0.1,
+        )
 
     c.stroke(
-        path.line(pos[0], pos[1], pos[0], pos[1] + size_cm * 0.3),
-        [
-            color.rgb.green,
-            deco.earrow(
-                [
-                    deco.stroked([color.rgb.green, style.linejoin.round]),
-                    deco.filled([color.rgb.green]),
-                ],
-                size=size_cm * 0.10,
-            ),
-        ],
+        path.line(pos[0], pos[1], pos[0] + arrow_len, pos[1]),
+        [x_color, style.linecap.round, arrow(x_color)],
     )
-    c.text(pos[0], pos[1] + size_cm * 0.3, "y")
+    c.text(pos[0] + arrow_len + 0.1, pos[1], "x", [text.valign.middle])
+
+    c.stroke(
+        path.line(pos[0], pos[1], pos[0], pos[1] + arrow_len),
+        [y_color, style.linecap.round, arrow(y_color)],
+    )
+    c.text(
+        pos[0], pos[1] + arrow_len + 0.1, "y",
+        [text.halign.center, text.valign.bottom]
+    )
 
     # Text
     caption = "{0}x{1} tags, size={2}cm and spacing={3}cm".format(
         n_cols, n_rows, size_cm, spacing * size_cm
     )
+    # TODO: caption rounding is wrong on python3
     c.text(pos[0] + 0.6 * size_cm, pos[0], caption)
 
-    # Crop marks
+    # Draw crop marks
     if crop_marks:
         left = -(1 + spacing) * size_cm
         right = (n_cols * (1 + spacing) + 1) * size_cm
@@ -1319,7 +1318,7 @@ def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows, crop_mar
     # text.preamble(r"\DeclareFixedFont{\LittleFont}{T1}{ptm}{b}{it}{0.75in}") #
     c.text(1.05 * size_cols, 0.04 * size_rows, caption)
 
-    # Crop marks
+    # Draw crop marks
     if crop_marks:
         left = -size_cols
         right = (n_cols + 2) * size_cols
@@ -1391,6 +1390,10 @@ def main():
         help="Space-separated list of tag numbers to leave blank, starting from 0 at "
              "the bottom left (default: none)",
     )
+    april_options.add_argument(
+        "--no-color", action="store_true", default=True,
+        help="Draw the axis arrows in black instead of red and green",
+    )
 
     checker_options = parser.add_argument_group("Checkerboard arguments")
     checker_options.add_argument(
@@ -1419,7 +1422,7 @@ def main():
     if args.gridType == "apriltag":
         generate_aprilgrid(
             c, args.nx, args.ny, args.tsize, args.tspace, args.tfam, args.skip_ids,
-            args.crop_marks
+            not args.no_color, args.crop_marks
         )
     elif args.gridType == "checkerboard":
         generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy, args.crop_marks)
