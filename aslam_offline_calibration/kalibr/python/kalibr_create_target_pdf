@@ -1068,7 +1068,7 @@ class AprilTagCodes:
             self.codes, self.total_bits = self.TagFamilies[family]
         except KeyError:
             print("[ERROR]: Unknown tag family.")
-            sys.exit(0)
+            sys.exit(1)
 
 
 def generate_apriltag(
@@ -1099,6 +1099,7 @@ def generate_apriltag(
                 id_, family.family_name
             )
         )
+        sys.exit(1)
 
     # Calculate the bit size of the tag
     sqrt_bits = math.sqrt(family.total_bits)
@@ -1182,7 +1183,7 @@ def generate_aprilgrid(
     """
     if spacing < 0 or spacing > 1.0:
         print("[ERROR]: Invalid tagSpacing specified. [0-1.0] of tagSize")
-        sys.exit(0)
+        sys.exit(1)
 
     if skip_tags is None:
         skip_tags = []
@@ -1349,7 +1350,7 @@ def main():
 
     if len(sys.argv) == 1:
         parser.print_help()
-        sys.exit(0)
+        sys.exit(1)
 
     # Parse arguments
     args = parser.parse_args()
@@ -1367,7 +1368,7 @@ def main():
         generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy)
     else:
         print("[ERROR]: Unknown grid pattern")
-        sys.exit(0)
+        sys.exit(1)
 
     # Write to file
     c.writePDFfile(args.output)
