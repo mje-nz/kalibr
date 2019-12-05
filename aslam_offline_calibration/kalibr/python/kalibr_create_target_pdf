@@ -1272,10 +1272,13 @@ def generate_aprilgrid(
     )
 
     # Text
-    caption = "{0}x{1} tags, size={2:.3g}cm and spacing={3:.3g}cm".format(
+    caption = (
+        r"${0} \mkern-3mu\times\mkern-3mu {1}$ tags, "
+        r"size$\,=\,${2:.3g}$\,$cm and spacing$\,=\,${3:.3g}$\,$cm"
+    ).format(
         n_cols, n_rows, size_cm, spacing * size_cm
     )
-    c.text(pos[0] + 0.6 * size_cm, pos[0], caption)
+    c.text(pos[0] + 0.6 * size_cm, pos[0], caption, [text.valign.middle])
 
     # Draw crop marks
     if crop_marks:
