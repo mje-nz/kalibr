@@ -1062,140 +1062,153 @@ class AprilTagCodes:
         # "t36h9": (t36h9, 36),
     }
 
-    def __init__(self, chosenTagFamiliy):
+    def __init__(self, family):
+        self.family_name = family
         try:
-            self.chosenTagFamiliy = chosenTagFamiliy
-            self.tagCodes = AprilTagCodes.TagFamilies[chosenTagFamiliy][0]
-            self.totalBits = AprilTagCodes.TagFamilies[chosenTagFamiliy][1]
-        except:
-            print("[ERROR]: Unknown tag familiy.")
+            self.codes, self.total_bits = self.TagFamilies[family]
+        except KeyError:
+            print("[ERROR]: Unknown tag family.")
             sys.exit(0)
 
 
-# borderBits must be consitent with the variable "blackBorder" in the detector code in
-# file ethz_apriltag2/src/TagFamily.cc
-def generateAprilTag(
-        canvas,
-        position,
-        metricSize,
-        tagSpacing,
-        tagID,
-        tagFamililyData,
-        rotation=2,
-        symmCorners=True,
-        borderBits=2,
+def generate_apriltag(
+    canvas, position, size, spacing, id_, family, rotation=2, symm_corners=True, border_bits=2,
 ):
-    # get the tag code
+    """Draw a single AprilTag onto the given canvas.
+
+    Args:
+        canvas (pyx.canvas.canvas): Canvas to draw on.
+        position (tuple): Position at which to draw the tag.
+        size (float): Tag size in cm.
+        spacing (float): Space between tags as a fraction of size.
+        id_ (int): Index of tag in family.
+        family (AprilTagCodes): Tag family.
+        rotation (int): Rotation the tag 90 degrees this many times.
+        symm_corners (bool): Add squares to make corners symmetric.
+        border_bits (int): Must be consistent with the variable "blackBorder" in the
+            detector code in file ethz_apriltag2/src/TagFamily.cc.
+    """
+    c = canvas
+
+    # Get the tag code
     try:
-        tagCode = tagFamililyData.tagCodes[tagID]
-    except:
+        tag_code = family.codes[id_]
+    except IndexError:
         print(
-            "[ERROR]: Requested tag ID of {0} not available in the {1} TagFamiliy".format(
-                tagID, tagFamililyData.chosenTagFamiliy
+            "[ERROR]: Requested tag ID of {0} not available in the {1} tag family".format(
+                id_, family.family_name
             )
         )
 
-    # calculate the bit size of the tag
-    sqrtBits = math.sqrt(tagFamililyData.totalBits)
-    bitSquareSize = metricSize / (sqrtBits + borderBits * 2)
+    # Calculate the bit size of the tag
+    sqrt_bits = math.sqrt(family.total_bits)
+    bit_square_size = size / (sqrt_bits + border_bits * 2)
 
-    # position of tag
-    xPos = position[0]
-    yPos = position[1]
+    # Position of tag
+    x_pos = position[0]
+    y_pos = position[1]
 
-    # borders (2x bit size)
-    borderSize = borderBits * bitSquareSize
+    # Borders (2x bit size)
+    border_size = border_bits * bit_square_size
 
-    c.fill(path.rect(xPos, yPos, metricSize, borderSize), [color.rgb.black])  # bottom
+    c.fill(path.rect(x_pos, y_pos, size, border_size), [color.rgb.black])  # bottom
     c.fill(
-        path.rect(xPos, yPos + metricSize - borderSize, metricSize, borderSize),
+        path.rect(x_pos, y_pos + size - border_size, size, border_size),
         [color.rgb.black],
     )  # top
     c.fill(
-        path.rect(xPos + metricSize - borderSize, yPos, borderSize, metricSize),
+        path.rect(x_pos + size - border_size, y_pos, border_size, size),
         [color.rgb.black],
     )  # left
-    c.fill(path.rect(xPos, yPos, borderSize, metricSize), [color.rgb.black])  # right
+    c.fill(path.rect(x_pos, y_pos, border_size, size), [color.rgb.black])  # right
 
-    # create numpy matrix of code
-    codeMatrix = np.zeros((int(sqrtBits), int(sqrtBits)))
-    for i in range(0, int(sqrtBits)):
-        for j in range(0, int(sqrtBits)):
-            if not tagCode & (1 << int(sqrtBits) * i + j):
-                codeMatrix[i, j] = 1
+    # Create numpy matrix of code
+    code_matrix = np.zeros((int(sqrt_bits), int(sqrt_bits)))
+    for i in range(0, int(sqrt_bits)):
+        for j in range(0, int(sqrt_bits)):
+            if not tag_code & (1 << int(sqrt_bits) * i + j):
+                code_matrix[i, j] = 1
 
-    # rotation
-    codeMatrix = np.rot90(codeMatrix, rotation)
+    # Rotation
+    code_matrix = np.rot90(code_matrix, rotation)
 
-    # bits
-    for i in range(0, int(sqrtBits)):
-        for j in range(0, int(sqrtBits)):
-            if codeMatrix[i, j]:
+    # Bits
+    for i in range(0, int(sqrt_bits)):
+        for j in range(0, int(sqrt_bits)):
+            if code_matrix[i, j]:
                 c.fill(
                     path.rect(
-                        xPos + (j + borderBits) * bitSquareSize,
-                        yPos + ((borderBits - 1) + sqrtBits - i) * bitSquareSize,
-                        bitSquareSize,
-                        bitSquareSize,
+                        x_pos + (j + border_bits) * bit_square_size,
+                        y_pos + ((border_bits - 1) + sqrt_bits - i) * bit_square_size,
+                        bit_square_size,
+                        bit_square_size,
                     ),
                     [color.rgb.black],
                 )
 
-    # add squares to make corners symmetric (decreases the effect of motion blur in the
+    # Add squares to make corners symmetric (decreases the effect of motion blur in the
     # subpix refinement...)
-    if symmCorners:
-        metricSquareSize = tagSpacing * metricSize
+    if symm_corners:
+        metric_square_size = spacing * size
 
         corners = [
-            [xPos - metricSquareSize, yPos - metricSquareSize],
-            [xPos + metricSize, yPos - metricSquareSize],
-            [xPos + metricSize, yPos + metricSize],
-            [xPos - metricSquareSize, yPos + metricSize],
+            [x_pos - metric_square_size, y_pos - metric_square_size],
+            [x_pos + size, y_pos - metric_square_size],
+            [x_pos + size, y_pos + size],
+            [x_pos - metric_square_size, y_pos + size],
         ]
 
         for point in corners:
             c.fill(
-                path.rect(point[0], point[1], metricSquareSize, metricSquareSize),
+                path.rect(point[0], point[1], metric_square_size, metric_square_size),
                 [color.rgb.black],
             )
 
 
-# tagSpaceing in % of tagSize
-def generateAprilBoard(
-        canvas, n_cols, n_rows, tagSize, tagSpacing=0.25, tagFamilily="t36h11",
-        skipIds=None
+def generate_aprilgrid(
+        canvas, n_cols, n_rows, size, spacing=0.25, family="t36h11", skip_tags=None
 ):
-    if tagSpacing < 0 or tagSpacing > 1.0:
-        print("[ERROR]: Invalid tagSpacing specified.  [0-1.0] of tagSize")
+    """Draw an Aprilgrid target on the given canvas.
+
+    Args:
+        canvas (pyx.canvas.canvas):
+        n_cols (int): Number of tags in x direction.
+        n_rows (int): Number of tags in y direction.
+        size (float): Size of each tag in metres.
+        spacing (float): Space between tags as a fraction of size.
+        family (str): AprilTag family name.
+        skip_tags (list[int]): List of positions to leave blank (starting from 0 at the
+            bottom left).
+    """
+    if spacing < 0 or spacing > 1.0:
+        print("[ERROR]: Invalid tagSpacing specified. [0-1.0] of tagSize")
         sys.exit(0)
 
-    if skipIds is None:
-        skip_ids = []
+    if skip_tags is None:
+        skip_tags = []
 
-    # convert to cm
-    tagSize = tagSize * 100.0
+    c = canvas
 
-    # get the tag familiy data
-    tagFamililyData = AprilTagCodes(tagFamilily)
+    # Convert to cm
+    size_cm = size * 100.0
 
-    # create one tag
-    numTags = n_cols * n_rows
+    # Get the tag family codes
+    codes = AprilTagCodes(family)
 
-    # draw tags
+    # Draw tags
     for y in range(0, n_rows):
         for x in range(0, n_cols):
-            id = n_cols * y + x
-            if id not in skipIds:
-                pos = (x * (1 + tagSpacing) * tagSize, y * (1 + tagSpacing) * tagSize)
-                generateAprilTag(
-                    canvas, pos, tagSize, tagSpacing, id, tagFamililyData, rotation=2
-                )
-                # c.text(pos[0]+0.45*tagSize, pos[1]-0.7*tagSize*tagSpacing, "{0}".format(id))
+            i = n_cols * y + x
+            if i in skip_tags:
+                continue
+            pos = (x * (1 + spacing) * size_cm, y * (1 + spacing) * size_cm)
+            generate_apriltag(canvas, pos, size_cm, spacing, i, codes, rotation=2)
+            # c.text(pos[0]+0.45*tagSize, pos[1]-0.7*tagSize*tagSpacing, "{0}".format(id))
 
-    # draw axis
-    pos = (-1.5 * tagSpacing * tagSize, -1.5 * tagSpacing * tagSize)
+    # Draw axis
+    pos = (-1.5 * spacing * size_cm, -1.5 * spacing * size_cm)
     c.stroke(
-        path.line(pos[0], pos[1], pos[0] + tagSize * 0.3, pos[1]),
+        path.line(pos[0], pos[1], pos[0] + size_cm * 0.3, pos[1]),
         [
             color.rgb.red,
             deco.earrow(
@@ -1203,14 +1216,14 @@ def generateAprilBoard(
                     deco.stroked([color.rgb.red, style.linejoin.round]),
                     deco.filled([color.rgb.red]),
                 ],
-                size=tagSize * 0.10,
+                size=size_cm * 0.10,
             ),
         ],
     )
-    c.text(pos[0] + tagSize * 0.3, pos[1], "x")
+    c.text(pos[0] + size_cm * 0.3, pos[1], "x")
 
     c.stroke(
-        path.line(pos[0], pos[1], pos[0], pos[1] + tagSize * 0.3),
+        path.line(pos[0], pos[1], pos[0], pos[1] + size_cm * 0.3),
         [
             color.rgb.green,
             deco.earrow(
@@ -1218,32 +1231,34 @@ def generateAprilBoard(
                     deco.stroked([color.rgb.green, style.linejoin.round]),
                     deco.filled([color.rgb.green]),
                 ],
-                size=tagSize * 0.10,
+                size=size_cm * 0.10,
             ),
         ],
     )
-    c.text(pos[0], pos[1] + tagSize * 0.3, "y")
+    c.text(pos[0], pos[1] + size_cm * 0.3, "y")
 
     # text
     caption = "{0}x{1} tags, size={2}cm and spacing={3}cm".format(
-        n_cols, n_rows, tagSize, tagSpacing * tagSize
+        n_cols, n_rows, size_cm, spacing * size_cm
     )
-    c.text(pos[0] + 0.6 * tagSize, pos[0], caption)
+    c.text(pos[0] + 0.6 * size_cm, pos[0], caption)
 
 
-def generateCheckerboard(canvas, n_cols, n_rows, size_cols, size_rows):
-    # convert to cm
+def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows):
+    c = canvas
+
+    # Convert to cm
     size_cols = size_cols * 100.0
     size_rows = size_rows * 100.0
 
-    # message
+    # Message
     print(
         "Generating a checkerboard with {0}x{1} corners and a box size of {2}x{3} cm".format(
             n_cols, n_rows, size_cols, size_rows
         )
     )
 
-    # draw boxes
+    # Draw boxes
     for x in range(0, n_cols + 1):
         for y in range(0, n_rows + 1):
             up_left_x = x * size_cols
@@ -1254,142 +1269,114 @@ def generateCheckerboard(canvas, n_cols, n_rows, size_cols, size_rows):
                     [color.rgb.black],
                 )
 
-    # print caption
+    # Print caption
     caption = "{0}x{1}@{2}x{3}cm".format(n_cols, n_rows, size_cols, size_rows)
 
     # text.preamble(r"\DeclareFixedFont{\LittleFont}{T1}{ptm}{b}{it}{0.75in}") #
     c.text(1.05 * size_cols, 0.04 * size_rows, caption)
 
 
-if __name__ == "__main__":
+def main():
     usage = """
     Example Aprilgrid:
         kalibr_create_target_pdf --type apriltag --nx 6 --ny 6 --tsize 0.08 --tspace 0.3
-    Example Checkerboard:
-        kalibr_create_target_pdf --type checkerboard --nx 6 --ny 6 -csx 0.05 --csy 0.1
+    Example checkerboard:
+        kalibr_create_target_pdf --type checkerboard --nx 6 --ny 6 --csx 0.05 --csy 0.1
     """
 
-    # setup the argument list
+    # Setup the argument list
     parser = argparse.ArgumentParser(
         description="Generate PDFs of calibration patterns.", usage=usage
     )
 
-    outputOptions = parser.add_argument_group("Output options")
-    outputOptions.add_argument(
-        "output", nargs="?", default="target", help="Output filename"
+    output_options = parser.add_argument_group("Output options")
+    output_options.add_argument(
+        "OUTPUT", nargs="?", default="target",
+        help="Output filename (without extension)"
     )
-    outputOptions.add_argument(
-        "--eps",
-        action="store_true",
-        dest="do_eps",
+    output_options.add_argument(
+        "--eps", action="store_true",
         help="Also output an EPS file",
-        required=False,
     )
 
-    genericOptions = parser.add_argument_group("Generic grid options")
-    genericOptions.add_argument(
-        "--type",
-        dest="gridType",
-        help="The grid pattern type. ('apriltag' or 'checkerboard')",
+    generic_options = parser.add_argument_group("Generic grid options")
+    generic_options.add_argument(
+        "--type", dest="gridType",
+        help="Grid pattern type ('apriltag' or 'checkerboard')",
     )
-    genericOptions.add_argument(
-        "--nx",
-        type=int,
-        default=6,
-        dest="n_cols",
-        help="The number of tags in x direction (default: %(default)s)\n",
+    generic_options.add_argument(
+        "--nx", type=int, default=6,
+        help="Number of tags in x direction (default: %(default)s)\n",
     )
-    genericOptions.add_argument(
-        "--ny",
-        type=int,
-        default=7,
-        dest="n_rows",
-        help="The number of tags in y direction (default: %(default)s)",
+    generic_options.add_argument(
+        "--ny", type=int, default=7,
+        help="Number of tags in y direction (default: %(default)s)",
     )
 
-    aprilOptions = parser.add_argument_group("Apriltag arguments")
-    aprilOptions.add_argument(
-        "--tsize",
-        type=float,
-        default=0.08,
-        dest="tsize",
-        help="The size of one tag [m] (default: %(default)s)",
+    april_options = parser.add_argument_group("Apriltag options")
+    april_options.add_argument(
+        "--tsize", type=float, default=0.08,
+        help="Size of one tag [m] (default: %(default)s)",
     )
-    aprilOptions.add_argument(
-        "--tspace",
-        type=float,
-        default=0.3,
-        dest="tagspacing",
-        help="The space between the tags in fraction of the edge size [0..1] (default: %(default)s)",
+    april_options.add_argument(
+        "--tspace", type=float, default=0.3,
+        help="Space between the tags as a fraction of the tag size [0..1] ("
+             "default: %(default)s)",
     )
-    aprilOptions.add_argument(
-        "--tfam",
-        default="t36h11",
-        dest="tagfamiliy",
-        help="Familiy of April tags {0} (default: %(default)s)".format(
-            AprilTagCodes.TagFamilies.keys()
+    april_options.add_argument(
+        "--tfam", default="t36h11",
+        help="Apriltag family {0} (default: %(default)r)".format(
+            list(AprilTagCodes.TagFamilies.keys())
         ),
     )
-    aprilOptions.add_argument(
-        "--skip-ids",
-        default="",
-        dest="skipIds",
-        help="Space-separated list of tag ids to leave blank (default: none)",
+    april_options.add_argument(
+        "--skip-ids", default="",
+        help="Space-separated list of tag numbers to leave blank, starting from 0 at"
+             "the bottom left (default: none)",
     )
 
-    checkerOptions = parser.add_argument_group("Checkerboard arguments")
-    checkerOptions.add_argument(
-        "--csx",
-        type=float,
-        default=0.05,
-        dest="chessSzX",
-        help="The size of one chessboard square in x direction [m] (default: %(default)s)",
+    checker_options = parser.add_argument_group("Checkerboard arguments")
+    checker_options.add_argument(
+        "--csx", type=float, default=0.05,
+        help="Size of one checkerboard square in x direction [m] (default: %("
+             "default)s)",
     )
-    checkerOptions.add_argument(
-        "--csy",
-        type=float,
-        default=0.05,
-        dest="chessSzY",
-        help="The size of one chessboard square in y direction [m] (default: %(default)s)",
+    checker_options.add_argument(
+        "--csy", type=float, default=0.05,
+        help="Size of one checkerboard square in y direction [m] (default: %("
+             "default)s)",
     )
 
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
 
-    # Parser the argument list
-    try:
-        parsed = parser.parse_args()
-    except:
-        sys.exit(0)
+    # Parse arguments
+    args = parser.parse_args()
+    args.skip_ids = [int(x) for x in args.skip_ids.split(" ") if x]
 
-    # post-process arguments
-    parsed.skipIds = [int(x) for x in parsed.skipIds.split(" ") if x]
-
-    # open a new canvas
+    # Create a new canvas
     c = canvas.canvas()
 
-    # draw the board
-    if parsed.gridType == "apriltag":
-        generateAprilBoard(
-            canvas,
-            parsed.n_cols,
-            parsed.n_rows,
-            parsed.tsize,
-            parsed.tagspacing,
-            parsed.tagfamiliy,
-            parsed.skipIds,
+    # Draw the board
+    if args.gridType == "apriltag":
+        generate_aprilgrid(
+            c, args.nx, args.ny, args.tsize, args.tspace, args.tfam, args.skip_ids,
         )
-    elif parsed.gridType == "checkerboard":
-        generateCheckerboard(
-            c, parsed.n_cols, parsed.n_rows, parsed.chessSzX, parsed.chessSzY
-        )
+    elif args.gridType == "checkerboard":
+        generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy)
     else:
         print("[ERROR]: Unknown grid pattern")
         sys.exit(0)
 
-    # write to file
-    c.writePDFfile(parsed.output)
+    # Write to file
+    c.writePDFfile(args.output)
+    print("Wrote {}.pdf.".format(args.output))
 
-    if parsed.do_eps:
-        c.writeEPSfile(parsed.output)
+    if args.eps:
+        c.writeEPSfile(args.output)
+        print("Wrote {}.eps.".format(args.output))
+
+
+if __name__ == "__main__":
+    main()
