@@ -1167,8 +1167,41 @@ def generate_apriltag(
             )
 
 
+def generate_crop_marks(canvas, left, right, top, bottom, offset=0.3, length=1):
+    """Generate crop marks for printing.
+
+    Args:
+        canvas (pyx.canvas.canvas): Canvas to draw on.
+        left (float): Left side of document in cm.
+        right (float): Right side of document in cm.
+        top (float): Top of document in cm.
+        bottom (float): Bottom of document in cm.
+        offset (float): Gap between document and crop marks in cm.
+        length(float): Length of crop marks in cm.
+    """
+    c = canvas
+    style_ = [color.rgb.black, style.linewidth.thin]
+
+    # Bottom left
+    c.stroke(path.line(left, bottom - offset, left, bottom - offset - length), style_)
+    c.stroke(path.line(left - offset, bottom, left - offset - length, bottom), style_)
+
+    # Bottom right
+    c.stroke(path.line(right, bottom - offset, right, bottom - offset - length), style_)
+    c.stroke(path.line(right + offset, bottom, right + offset + length, bottom), style_)
+
+    # Top left
+    c.stroke(path.line(left, top + offset, left, top + offset + length), style_)
+    c.stroke(path.line(left - offset, top, left - offset - length, top), style_)
+
+    # Top right
+    c.stroke(path.line(right, top + offset, right, top + offset + length), style_)
+    c.stroke(path.line(right + offset, top, right + offset + length, top), style_)
+
+
 def generate_aprilgrid(
-        canvas, n_cols, n_rows, size, spacing=0.25, family="t36h11", skip_tags=None
+        canvas, n_cols, n_rows, size, spacing=0.25, family="t36h11", skip_tags=None,
+        crop_marks=False
 ):
     """Draw an Aprilgrid target on the given canvas.
 
@@ -1181,6 +1214,7 @@ def generate_aprilgrid(
         family (str): AprilTag family name.
         skip_tags (list[int]): List of positions to leave blank (starting from 0 at the
             bottom left).
+        crop_marks (bool): Include crop marks for printing.
     """
     if spacing < 0 or spacing > 1.0:
         print("[ERROR]: Invalid tagSpacing specified. [0-1.0] of tagSize")
@@ -1239,14 +1273,22 @@ def generate_aprilgrid(
     )
     c.text(pos[0], pos[1] + size_cm * 0.3, "y")
 
-    # text
+    # Text
     caption = "{0}x{1} tags, size={2}cm and spacing={3}cm".format(
         n_cols, n_rows, size_cm, spacing * size_cm
     )
     c.text(pos[0] + 0.6 * size_cm, pos[0], caption)
 
+    # Crop marks
+    if crop_marks:
+        left = -(1 + spacing) * size_cm
+        right = (n_cols * (1 + spacing) + 1) * size_cm
+        top = (n_rows * (1 + spacing) + 1) * size_cm
+        bottom = -(1 + spacing) * size_cm
+        generate_crop_marks(c, left, right, top, bottom)
 
-def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows):
+
+def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows, crop_marks=False):
     c = canvas
 
     # Convert to cm
@@ -1276,6 +1318,14 @@ def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows):
 
     # text.preamble(r"\DeclareFixedFont{\LittleFont}{T1}{ptm}{b}{it}{0.75in}") #
     c.text(1.05 * size_cols, 0.04 * size_rows, caption)
+
+    # Crop marks
+    if crop_marks:
+        left = -size_cols
+        right = (n_cols + 2) * size_cols
+        top = (n_rows + 2) * size_rows
+        bottom = -size_rows
+        generate_crop_marks(c, left, right, top, bottom)
 
 
 def main():
@@ -1314,6 +1364,10 @@ def main():
     generic_options.add_argument(
         "--ny", type=int, default=7, metavar="NUMBER",
         help="Number of tags in y direction (default: %(default)s)",
+    )
+    generic_options.add_argument(
+        "--crop-marks", action="store_true",
+        help="Include crop marks for printing",
     )
 
     april_options = parser.add_argument_group("Apriltag options")
@@ -1365,9 +1419,10 @@ def main():
     if args.gridType == "apriltag":
         generate_aprilgrid(
             c, args.nx, args.ny, args.tsize, args.tspace, args.tfam, args.skip_ids,
+            args.crop_marks
         )
     elif args.gridType == "checkerboard":
-        generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy)
+        generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy, args.crop_marks)
     else:
         print("[ERROR]: Unknown grid pattern")
         sys.exit(1)
