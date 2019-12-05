@@ -1315,8 +1315,10 @@ def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows, crop_mar
                 )
 
     # Print caption
-    caption = "{0}x{1}@{2}x{3}cm".format(n_cols, n_rows, size_cols, size_rows)
-
+    caption = (
+        r"${0} \mkern-3mu\times\mkern-3mu {1}$ with "
+        r"${2:.3g} \mkern-3mu\times\mkern-3mu {3:.3g}\,$cm squares"
+    ).format(n_cols, n_rows, size_cols, size_rows)
     # text.preamble(r"\DeclareFixedFont{\LittleFont}{T1}{ptm}{b}{it}{0.75in}") #
     c.text(1.05 * size_cols, 0.04 * size_rows, caption)
 
