@@ -1272,10 +1272,9 @@ def generate_aprilgrid(
     )
 
     # Text
-    caption = "{0}x{1} tags, size={2}cm and spacing={3}cm".format(
+    caption = "{0}x{1} tags, size={2:.3g}cm and spacing={3:.3g}cm".format(
         n_cols, n_rows, size_cm, spacing * size_cm
     )
-    # TODO: caption rounding is wrong on python3
     c.text(pos[0] + 0.6 * size_cm, pos[0], caption)
 
     # Draw crop marks
