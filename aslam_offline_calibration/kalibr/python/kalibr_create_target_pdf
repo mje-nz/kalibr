@@ -7,6 +7,7 @@ from __future__ import print_function
 from pyx import canvas, path, color, deco, style
 import argparse
 import sys
+import textwrap
 
 import math
 import numpy as np
@@ -1278,21 +1279,22 @@ def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows):
 
 
 def main():
-    usage = """
+    example = textwrap.dedent("""
     Example Aprilgrid:
         kalibr_create_target_pdf --type apriltag --nx 6 --ny 6 --tsize 0.08 --tspace 0.3
     Example checkerboard:
         kalibr_create_target_pdf --type checkerboard --nx 6 --ny 6 --csx 0.05 --csy 0.1
-    """
+    """)
 
     # Setup the argument list
     parser = argparse.ArgumentParser(
-        description="Generate PDFs of calibration patterns.", usage=usage
+        description="Generate PDFs of calibration patterns.\n\n" + example,
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     output_options = parser.add_argument_group("Output options")
     output_options.add_argument(
-        "OUTPUT", nargs="?", default="target",
+        dest="output", nargs="?", default="target", metavar="OUTPUT",
         help="Output filename (without extension)"
     )
     output_options.add_argument(
@@ -1306,44 +1308,44 @@ def main():
         help="Grid pattern type ('apriltag' or 'checkerboard')",
     )
     generic_options.add_argument(
-        "--nx", type=int, default=6,
+        "--nx", type=int, default=6, metavar="NUMBER",
         help="Number of tags in x direction (default: %(default)s)\n",
     )
     generic_options.add_argument(
-        "--ny", type=int, default=7,
+        "--ny", type=int, default=7, metavar="NUMBER",
         help="Number of tags in y direction (default: %(default)s)",
     )
 
     april_options = parser.add_argument_group("Apriltag options")
     april_options.add_argument(
-        "--tsize", type=float, default=0.08,
+        "--tsize", type=float, default=0.08, metavar="SIZE",
         help="Size of one tag [m] (default: %(default)s)",
     )
     april_options.add_argument(
-        "--tspace", type=float, default=0.3,
+        "--tspace", type=float, default=0.3, metavar="SPACING",
         help="Space between the tags as a fraction of the tag size [0..1] ("
              "default: %(default)s)",
     )
     april_options.add_argument(
-        "--tfam", default="t36h11",
+        "--tfam", default="t36h11", metavar="FAMILY",
         help="Apriltag family {0} (default: %(default)r)".format(
             list(AprilTagCodes.TagFamilies.keys())
         ),
     )
     april_options.add_argument(
-        "--skip-ids", default="",
-        help="Space-separated list of tag numbers to leave blank, starting from 0 at"
+        "--skip-ids", default="", metavar="IDS",
+        help="Space-separated list of tag numbers to leave blank, starting from 0 at "
              "the bottom left (default: none)",
     )
 
     checker_options = parser.add_argument_group("Checkerboard arguments")
     checker_options.add_argument(
-        "--csx", type=float, default=0.05,
+        "--csx", type=float, default=0.05, metavar="SIZE",
         help="Size of one checkerboard square in x direction [m] (default: %("
              "default)s)",
     )
     checker_options.add_argument(
-        "--csy", type=float, default=0.05,
+        "--csy", type=float, default=0.05, metavar="SIZE",
         help="Size of one checkerboard square in y direction [m] (default: %("
              "default)s)",
     )
