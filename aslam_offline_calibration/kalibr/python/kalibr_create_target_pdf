@@ -1179,6 +1179,7 @@ def generate_crop_marks(canvas, left, right, top, bottom, offset=0.3, length=1):
         offset (float): Gap between document and crop marks in cm.
         length(float): Length of crop marks in cm.
     """
+    print("Drawing crop marks for {}x{}cm document".format(right - left, top - bottom))
     c = canvas
     style_ = [color.rgb.black, style.linewidth.thin]
 
@@ -1428,6 +1429,11 @@ def main():
 
     # Draw the board
     if args.gridType == "apriltag":
+        if args.tfam != "t36h11":
+            print(
+                "Note: you must recompile the calibration tools to use a non-default "
+                "AprilTag family"
+            )
         generate_aprilgrid(
             c, args.nx, args.ny, args.tsize, args.tspace, args.tfam, args.skip_ids,
             not args.no_color, args.crop_marks
