@@ -1090,6 +1090,7 @@ def generate_apriltag(
             detector code in file ethz_apriltag2/src/TagFamily.cc.
     """
     c = canvas
+    x_pos, y_pos = position
 
     # Get the tag code
     try:
@@ -1106,13 +1107,8 @@ def generate_apriltag(
     sqrt_bits = math.sqrt(family.total_bits)
     bit_square_size = size / (sqrt_bits + border_bits * 2)
 
-    # Position of tag
-    x_pos = position[0]
-    y_pos = position[1]
-
     # Borders (2x bit size)
     border_size = border_bits * bit_square_size
-
     c.fill(path.rect(x_pos, y_pos, size, border_size), [color.rgb.black])  # bottom
     c.fill(
         path.rect(x_pos, y_pos + size - border_size, size, border_size),
@@ -1126,22 +1122,22 @@ def generate_apriltag(
 
     # Create numpy matrix of code
     code_matrix = np.zeros((int(sqrt_bits), int(sqrt_bits)))
-    for i in range(0, int(sqrt_bits)):
-        for j in range(0, int(sqrt_bits)):
-            if not tag_code & (1 << int(sqrt_bits) * i + j):
-                code_matrix[i, j] = 1
+    for row in range(0, int(sqrt_bits)):
+        for col in range(0, int(sqrt_bits)):
+            if not tag_code & (1 << int(sqrt_bits) * row + col):
+                code_matrix[row, col] = 1
 
     # Rotation
     code_matrix = np.rot90(code_matrix, rotation)
 
     # Bits
-    for i in range(0, int(sqrt_bits)):
-        for j in range(0, int(sqrt_bits)):
-            if code_matrix[i, j]:
+    for row in range(0, int(sqrt_bits)):
+        for col in range(0, int(sqrt_bits)):
+            if code_matrix[row, col]:
                 c.fill(
                     path.rect(
-                        x_pos + (j + border_bits) * bit_square_size,
-                        y_pos + ((border_bits - 1) + sqrt_bits - i) * bit_square_size,
+                        x_pos + (col + border_bits) * bit_square_size,
+                        y_pos + ((border_bits - 1) + sqrt_bits - row) * bit_square_size,
                         bit_square_size,
                         bit_square_size,
                     ),
