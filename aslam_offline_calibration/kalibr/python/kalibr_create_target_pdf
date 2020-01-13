@@ -1198,7 +1198,7 @@ def generate_crop_marks(canvas, left, right, top, bottom, offset=0.3, length=1):
 
 def generate_aprilgrid(
         canvas, n_cols, n_rows, size, spacing=0.25, family="t36h11", skip_tags=None,
-        use_color=True, crop_marks=False
+        use_color=True, crop_marks=False, pad_to_width=None, pad_to_height=None
 ):
     """Draw an Aprilgrid target on the given canvas.
 
@@ -1212,6 +1212,8 @@ def generate_aprilgrid(
         skip_tags (list[int]): List of positions to leave blank (starting from 0 at the
             bottom left).
         crop_marks (bool): Include crop marks for printing.
+        pad_to_width (float): Width of area inside crop marks in cm.
+        pad_to_height (float): Height of area inside crop marks in cm.
     """
     if spacing < 0 or spacing > 1.0:
         print("[ERROR]: Invalid tagSpacing specified. [0-1.0] of tagSize")
@@ -1283,14 +1285,26 @@ def generate_aprilgrid(
 
     # Draw crop marks
     if crop_marks:
-        left = -(1 + spacing) * size_cm
-        right = (n_cols * (1 + spacing) + 1) * size_cm
-        top = (n_rows * (1 + spacing) + 1) * size_cm
-        bottom = -(1 + spacing) * size_cm
+        # Allow at least one square padding
+        width = ((n_cols + 1) * (1 + spacing) + 1) * size_cm
+        height = ((n_rows + 1) * (1 + spacing) + 1) * size_cm
+        if pad_to_width and pad_to_width > width:
+            width = pad_to_width
+        if pad_to_height and pad_to_height > height:
+            height = pad_to_height
+
+        center_x = ((n_cols * (1 + spacing) - spacing) * size_cm) / 2
+        center_y = ((n_rows * (1 + spacing) - spacing) * size_cm) / 2
+        left = center_x - width/2
+        right = center_x + width/2
+        top = center_y + height/2
+        bottom = center_y - height/2
         generate_crop_marks(c, left, right, top, bottom)
 
 
-def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows, crop_marks=False):
+def generate_checkerboard(
+        canvas, n_cols, n_rows, size_cols, size_rows, crop_marks=False,
+        pad_to_width=None, pad_to_height=None):
     c = canvas
 
     # Convert to cm
@@ -1325,10 +1339,20 @@ def generate_checkerboard(canvas, n_cols, n_rows, size_cols, size_rows, crop_mar
 
     # Draw crop marks
     if crop_marks:
-        left = -size_cols
-        right = (n_cols + 2) * size_cols
-        top = (n_rows + 2) * size_rows
-        bottom = -size_rows
+        # Allow at least one square padding
+        width = (n_cols + 3) * size_cols
+        height = (n_rows + 3) * size_rows
+        if pad_to_width and pad_to_width > width:
+            width = pad_to_width
+        if pad_to_height and pad_to_height > height:
+            height = pad_to_height
+
+        center_x = (n_cols + 1) * size_cols / 2
+        center_y = (n_rows + 1) * size_rows / 2
+        left = center_x - width/2
+        right = center_x + width/2
+        top = center_y + height/2
+        bottom = center_y - height/2
         generate_crop_marks(c, left, right, top, bottom)
 
 
@@ -1372,6 +1396,18 @@ def main():
     generic_options.add_argument(
         "--crop-marks", action="store_true",
         help="Include crop marks for printing",
+    )
+    generic_options.add_argument(
+        "--pad-to", type=float, metavar="SIZE",
+        help="Pad output to SIZExSIZE m (implies --crop-marks)"
+    )
+    generic_options.add_argument(
+        "--pad-to-width", type=float, metavar="W",
+        help="Pad output to W m wide (implies --crop-marks)"
+    )
+    generic_options.add_argument(
+        "--pad-to-height", type=float, metavar="H",
+        help="Pad output to H m high (implies --crop-marks)"
     )
 
     april_options = parser.add_argument_group("Apriltag options")
@@ -1419,6 +1455,15 @@ def main():
     # Parse arguments
     args = parser.parse_args()
     args.skip_ids = [int(x) for x in args.skip_ids.split(" ") if x]
+    if args.pad_to:
+        args.pad_to_width = args.pad_to
+        args.pad_to_height = args.pad_to
+    if args.pad_to_width:
+        args.pad_to_width *= 100
+    if args.pad_to_height:
+        args.pad_to_height *= 100
+    if args.pad_to_width or args.pad_to_height:
+        args.crop_marks = True
 
     # Create a new canvas
     c = canvas.canvas()
@@ -1432,10 +1477,13 @@ def main():
             )
         generate_aprilgrid(
             c, args.nx, args.ny, args.tsize, args.tspace, args.tfam, args.skip_ids,
-            not args.no_color, args.crop_marks
+            not args.no_color, args.crop_marks, args.pad_to_width, args.pad_to_height
         )
     elif args.gridType == "checkerboard":
-        generate_checkerboard(c, args.nx, args.ny, args.csx, args.csy, args.crop_marks)
+        generate_checkerboard(
+            c, args.nx, args.ny, args.csx, args.csy, args.crop_marks, args.pad_to_width,
+            args.pad_to_height
+        )
     else:
         print("[ERROR]: Unknown grid pattern")
         sys.exit(1)
